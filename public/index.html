@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Track Those Packages</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+</head>
+
+<body>
+
+<div class="container">
+    <h1>Package Tracker</h1>
+    <p>
+        Enter tracking numbers in the field below on separate lines, and click "Track" to display the current status and ETA of your deliveries.
+    </p>
+    <textarea id="trackingNumbers" placeholder="Enter tracking numbers, one per line"></textarea>
+    <button id="trackButton">Track</button>
+    <div id="packageList"></div>
+</div>
+
+<script>
+document.getElementById('trackButton').addEventListener('click', async () => {
+    const trackingNumbers = document.getElementById('trackingNumbers').value
+        .split('\n')
+        .map(num => num.trim())
+        .filter(num => num);
+
+    if (trackingNumbers.length === 0) {
+        alert('Please enter at least one tracking number.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/track', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ trackingNumbers }),
+        });
+
+        const text = await response.text(); // Get raw text to debug parsing
+        console.log('Raw response:', text);
+
+        if (!response.ok) {
+            console.error('Error response:', text);
+            alert('Error fetching tracking information. Check the console for details.');
+            return;
+        }
+
+        const results = JSON.parse(text); // Attempt to parse JSON
+        console.log('Parsed results:', results);
+
+        if (!Array.isArray(results)) {
+            console.error('Unexpected response format:', results);
+            alert('Unexpected response from server. Check the console for details.');
+            return;
+        }
+
+        const packageList = document.getElementById('packageList');
+        packageList.innerHTML = '';
+
+results.forEach(pkg => {
+    const div = document.createElement('div');
+    div.classList.add('package');
+    div.innerHTML = `
+        <p><strong>Tracking Number:</strong> ${pkg.trackingNumber}</p>
+        <p><strong>Status:</strong> ${pkg.status || 'Error retrieving status'}</p>
+        <p><strong>ETA:</strong> ${pkg.eta || 'Error retrieving ETA'}</p>
+    `;
+    packageList.appendChild(div);
+});
+
+    } catch (error) {
+        console.error('Error fetching packages:', error);
+        alert('An error occurred while fetching tracking details. See console for details.');
+    }
+});
+
+</script>
+
+</body>
+
+</html>
